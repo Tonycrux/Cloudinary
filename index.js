@@ -13,7 +13,7 @@ cloudinary.config({
   secure: true
 });
 
-app.get('/gallery/:tag', async (req, res) => {
+app.get('/images/:tag', async (req, res) => {
   const tag = req.params.tag;
   try {
     const result = await cloudinary.search
