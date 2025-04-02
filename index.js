@@ -1,65 +1,70 @@
-// Backend: Express API to fetch images from Cloudinary folder
-// Save this as `index.js`
-
 const express = require('express');
 const cloudinary = require('cloudinary').v2;
-const cors = require('cors');
-require('dotenv').config();
+
 
 const app = express();
-app.use(cors());
+const PORT = process.env.PORT || 3000;
 
 cloudinary.config({
-    cloud_name: 'dfogqrxnn',
-    api_key: '741527945872527',
-    api_secret: '9ozCzJSEn1h1-BAvznLzDRqd5eA',
-    secure: true
-  });
-  
+  cloud_name: 'dfogqrxnn',
+  api_key: '741527945872527',
+  api_secret: '9ozCzJSEn1h1-BAvznLzDRqd5eA',
+  secure: true
+});
 
-app.get('/images/folder/:folderName', async (req, res) => {
-  const folder = req.params.folderName;
+app.get('/gallery/:folder', async (req, res) => {
+  const folder = req.params.folder;
   try {
     const result = await cloudinary.search
       .expression(`folder:${folder}`)
-      .sort_by('public_id','desc')
+      .sort_by('public_id', 'desc')
       .max_results(30)
       .execute();
 
-    const urls = result.resources.map(img => img.secure_url);
-    res.json({ folder, urls });
+    // Apply transformation: compress images with quality auto, 
+    // use auto format, and use "limit" crop mode to prevent enlargement
+    const urls = result.resources.map(img => {
+      return img.secure_url.replace(
+        '/upload/',
+        '/upload/q_auto:good,f_auto,c_limit,w_800/'
+      );
+    });
+
+    // Build HTML so each image is on its own row
+    let html = `<html>
+      <head>
+        <title>${folder} Gallery</title>
+        <style>
+          /* Ensures images are displayed one per row */
+          .gallery-image {
+            display: block;
+            margin: 20px auto; /* centers the image with margin */
+          }
+        </style>
+      </head>
+      <body>
+        <h1>Gallery: ${folder}</h1>`;
+
+    urls.forEach(url => {
+      html += `<div>
+                 <img src="${url}" class="gallery-image" alt="Gallery image" />
+               </div>`;
+    });
+    
+    html += `</body></html>`;
+
+    res.send(html);
   } catch (err) {
-    res.status(500).json({ error: 'Cloudinary folder query failed' });
+    console.error(err);
+    res.status(500).send('Error loading images.');
   }
 });
 
-app.listen(3000, () => console.log('API running on http://localhost:3000'));
+app.get('/', (req, res) => {
+  res.send('Welcome to Tizeti-images');
+});
 
-// Frontend: React component to view folder images
-export function FolderViewer() {
-  const [images, setImages] = React.useState([]);
-  const [folder, setFolder] = React.useState("products");
 
-  React.useEffect(() => {
-    fetch(`http://localhost:3000/images/folder/${folder}`)
-      .then(res => res.json())
-      .then(data => setImages(data.urls || []));
-  }, [folder]);
-
-  return (
-    <div className="p-4">
-      <h1 className="text-xl font-bold mb-4">Images in Folder: {folder}</h1>
-      <input
-        className="p-2 border rounded mb-4 w-full"
-        value={folder}
-        onChange={e => setFolder(e.target.value)}
-        placeholder="Enter folder name"
-      />
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-        {images.map((url, i) => (
-          <img key={i} src={url} alt="cloudinary-img" className="rounded-xl shadow" />
-        ))}
-      </div>
-    </div>
-  );
-}
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
