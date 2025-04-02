@@ -13,72 +13,46 @@ cloudinary.config({
   secure: true
 });
 
-app.get('/gallery/:folder', async (req, res) => {
-  const folder = req.params.folder;
+app.get('/gallery/:tag', async (req, res) => {
+  const tag = req.params.tag;
   try {
     const result = await cloudinary.search
-      .expression(`folder:${folder}`)
+      .expression(`tags:${tag}`)
       .sort_by('public_id', 'desc')
       .max_results(30)
       .execute();
 
     const resources = result.resources;
 
-    // If no images found, render a custom error page
+    // If no images found with the tag, return 404 JSON
     if (!resources || resources.length === 0) {
-      return res.status(404).send(`
-        <html>
-          <head><title>Folder Not Found</title></head>
-          <body style="font-family:sans-serif;text-align:center;margin-top:50px;">
-            <h1>🚫 Folder "${folder}" Not Found</h1>
-            <p>No images were found in the folder "<strong>${folder}</strong>".</p>
-            <a href="/">Go back</a>
-          </body>
-        </html>
-      `);
+      return res.status(404).json({
+        status: 'error',
+        message: `No images found with tag "${tag}".`
+      });
     }
 
-    // Otherwise, transform and display the images
-    const urls = resources.map(img => {
-      return img.secure_url.replace(
+    // Apply transformation to each image URL
+    const urls = resources.map(img =>
+      img.secure_url.replace(
         '/upload/',
         '/upload/q_auto:good,f_auto,c_limit,w_800/'
-      );
+      )
+    );
+
+    res.json({
+      status: 'success',
+      tag,
+      count: urls.length,
+      images: urls
     });
-
-    let html = `<html>
-      <head>
-        <title>${folder} Gallery</title>
-        <style>
-          .gallery-image {
-            display: block;
-            margin: 20px auto;
-          }
-        </style>
-      </head>
-      <body>
-        <h1 style="text-align:center;">Gallery: ${folder}</h1>`;
-
-    urls.forEach(url => {
-      html += `<div>
-                 <img src="${url}" class="gallery-image" alt="Gallery image" />
-               </div>`;
-    });
-
-    html += `</body></html>`;
-    res.send(html);
 
   } catch (err) {
     console.error('Cloudinary error:', err);
-    res.status(500).send(`
-      <html>
-        <head><title>Server Error</title></head>
-        <body style="font-family:sans-serif;text-align:center;margin-top:50px;">
-          <h1>⚠️ Something went wrong</h1>
-          <p>Unable to load images from folder "<strong>${folder}</strong>".</p>
-        </body>
-      </html>
-    `);
+    res.status(500).json({
+      status: 'error',
+      message: 'Internal server error while loading images.'
+    });
   }
 });
 
