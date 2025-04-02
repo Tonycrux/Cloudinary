@@ -1,0 +1,15 @@
+# Node.js
+node_modules/
+.env
+.DS_Store
+*.log
+
+# VS Code
+.vscode/
+
+# Mac system files
+Thumbs.db
+
+# Render build files (if any)
+build/
+dist/
