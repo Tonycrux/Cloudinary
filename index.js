@@ -32,13 +32,8 @@ app.get('/images/:tag', async (req, res) => {
       });
     }
 
-    // Apply transformation to each image URL
-    const urls = resources.map(img =>
-      img.secure_url.replace(
-        '/upload/',
-        '/upload/q_auto:good,f_auto,c_limit,w_800/'
-      )
-    );
+    
+    const urls = result.resources.map(img => img.secure_url);
 
     res.json({
       status: 'success',
